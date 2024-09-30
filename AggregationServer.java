@@ -1,66 +1,72 @@
-import java.io.*;
-import java.net.*;
-import java.util.concurrent.*;
+import java.rmi.Naming;
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
-public class AggregationServer {
-    private int port;
-    private String[] contentServers;
+public class AggregationServer extends UnicastRemoteObject implements AggregatorInterface {
+    private ConcurrentHashMap<String, Long> contentStore; // Stores content with timestamps
+    private List<String> feed;
+    private final long EXPIRATION_TIME_MS = 30000; // 30 seconds expiration
 
-    public AggregationServer(int port, String[] contentServers) {
-        this.port = port;
-        this.contentServers = contentServers;
+    public AggregationServer() throws RemoteException {
+        super();
+        feed = new ArrayList<>();
+        contentStore = new ConcurrentHashMap<>();
+
+        // Schedule periodic cleanup of expired content
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+        executor.scheduleAtFixedRate(this::removeExpiredContent, 10, 10, TimeUnit.SECONDS);
     }
 
-    public void start() throws IOException {
-        ServerSocket serverSocket = new ServerSocket(port);
-        System.out.println("Aggregation Server started at port: " + port);
-
-        while (true) {
-            Socket clientSocket = serverSocket.accept();
-            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-
-            String aggregatedContent = aggregateContent();
-            out.println(aggregatedContent);
-
-            clientSocket.close();
+    // GET request to retrieve feed
+    @Override
+    public synchronized List<String> getFeed() throws RemoteException {
+        if (feed.isEmpty()) {
+            throw new RemoteException("Feed is currently empty.");
         }
+        System.out.println("GET Request Processed.");
+        return new ArrayList<>(feed); // Return a copy of the feed
     }
 
-    private String aggregateContent() {
-        ExecutorService executor = Executors.newCachedThreadPool();
-        StringBuilder aggregatedData = new StringBuilder();
-
-        for (String server : contentServers) {
-            executor.submit(() -> {
-                try {
-                    Socket socket = new Socket("localhost", Integer.parseInt(server));
-                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-                    String content = in.readLine();
-                    synchronized (aggregatedData) {
-                        aggregatedData.append(content).append("\n");
-                    }
-
-                    socket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
+    // PUT request to add content
+    @Override
+    public synchronized void putContent(String content) throws RemoteException {
+        // Validate content (ensure id is present)
+        if (!content.contains("id")) {
+            throw new RemoteException("Content missing ID field, cannot be processed.");
         }
 
-        executor.shutdown();
+        // Add content with timestamp
+        contentStore.put(content, System.currentTimeMillis());
+        feed.add(content);
+
+        System.out.println("PUT Request Processed: " + content);
+    }
+
+    // Remove expired content (older than 30 seconds)
+    private void removeExpiredContent() {
+        long currentTime = System.currentTimeMillis();
+        contentStore.forEach((content, timestamp) -> {
+            if (currentTime - timestamp > EXPIRATION_TIME_MS) {
+                contentStore.remove(content);
+                feed.remove(content);
+                System.out.println("Expired Content Removed: " + content);
+            }
+        });
+    }
+
+    public static void main(String[] args) {
         try {
-            executor.awaitTermination(5, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
+            AggregationServer server = new AggregationServer();
+            Naming.rebind("AggregationServer", server);
+            System.out.println("Aggregation Server is running...");
+        } catch (Exception e) {
             e.printStackTrace();
         }
-
-        return aggregatedData.toString();
-    }
-
-    public static void main(String[] args) throws IOException {
-        String[] contentServers = {"8081", "8082"};
-        AggregationServer aggregationServer = new AggregationServer(8080, contentServers);
-        aggregationServer.start();
     }
 }

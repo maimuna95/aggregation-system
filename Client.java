@@ -1,27 +1,34 @@
-import java.io.*;
-import java.net.*;
+import java.rmi.Naming;
+import java.rmi.RemoteException;
+import java.util.List;
 
 public class Client {
-    public static String getAggregatedContent() {
-        StringBuilder content = new StringBuilder();
+    public static void main(String[] args) {
         try {
-            Socket socket = new Socket("localhost", 8080);
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            AggregatorInterface server = (AggregatorInterface) Naming.lookup("rmi://localhost/AggregationServer");
 
-            String line;
-            while ((line = in.readLine()) != null) {
-                content.append(line).append("\n");
+            // Retry mechanism for GET request
+            boolean success = false;
+            int retries = 3; // Number of retry attempts
+
+            while (retries > 0 && !success) {
+                try {
+                    List<String> feed = server.getFeed();
+                    System.out.println("Feed: " + feed);
+                    success = true; // Set success to true if request is successful
+                } catch (RemoteException e) {
+                    System.out.println("Failed to GET feed, retrying... Retries left: " + retries);
+                    retries--;
+                    if (retries > 0) {
+                        Thread.sleep(2000); // Wait 2 seconds before retrying
+                    } else {
+                        System.out.println("Failed to GET feed after multiple attempts.");
+                    }
+                }
             }
 
-            socket.close();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        return content.toString().trim();
-    }
-
-    public static void main(String[] args) {
-        String content = getAggregatedContent();
-        System.out.println("Aggregated Content:\n" + content);
     }
 }

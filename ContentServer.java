@@ -1,45 +1,36 @@
-import java.io.*;
-import java.net.*;
+import java.rmi.Naming;
+import java.rmi.RemoteException;
 
 public class ContentServer {
-    private int port;
-    private String content;
+    public static void main(String[] args) {
+        try {
+            AggregatorInterface server = (AggregatorInterface) Naming.lookup("rmi://localhost/AggregationServer");
 
-    public ContentServer(int port, String content) {
-        this.port = port;
-        this.content = content;
-    }
+            // Simulate PUT operation with content
+            String content = "{ \"id\": \"IDS60901\", \"name\": \"Adelaide\", \"state\": \"SA\", \"wind_spd_kt\": 8 }";
 
-    public void start() throws IOException {
-        ServerSocket serverSocket = new ServerSocket(port);
-        System.out.println("Content Server started at port: " + port);
+            // Retry mechanism for PUT request
+            boolean success = false;
+            int retries = 3; // Number of retry attempts
 
-        while (true) {
-            Socket clientSocket = serverSocket.accept();
-            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-            out.println(content);
-            clientSocket.close();
+            while (retries > 0 && !success) {
+                try {
+                    server.putContent(content);
+                    System.out.println("PUT Request Sent: " + content);
+                    success = true; // Set success to true if request is successful
+                } catch (RemoteException e) {
+                    System.out.println("Failed to PUT content, retrying... Retries left: " + retries);
+                    retries--;
+                    if (retries > 0) {
+                        Thread.sleep(2000); // Wait 2 seconds before retrying
+                    } else {
+                        System.out.println("Failed to PUT content after multiple attempts.");
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-    }
-
-    public static void main(String[] args) throws IOException {
-        ContentServer server1 = new ContentServer(8081, "Content from Server 1");
-        ContentServer server2 = new ContentServer(8082, "Content from Server 2");
-
-        new Thread(() -> {
-            try {
-                server1.start();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }).start();
-
-        new Thread(() -> {
-            try {
-                server2.start();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }).start();
     }
 }
