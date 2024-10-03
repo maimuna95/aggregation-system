@@ -5,22 +5,19 @@ import java.util.Scanner;
 public class Client {
     public static void main(String[] args) {
         try {
-            // Connect to the Aggregation Server
-            Registry registry = LocateRegistry.getRegistry("localhost", 2000);
-            AggregatorInterface aggregator = (AggregatorInterface) registry.lookup("AggregatorService");
+            // Connect to ContentServer on port 1100
+            Registry registry = LocateRegistry.getRegistry("localhost", 1100);
+            ContentServerInterface server = (ContentServerInterface) registry.lookup("ContentServer");
 
-            // Ask user for the field they want to retrieve
+            // Asking client what information they want to get from the server
             Scanner scanner = new Scanner(System.in);
-            System.out.println("Enter the field you want to retrieve (e.g., local_date_time_full, air_temp, wind_spd_kmh): ");
+            System.out.println("What data you want to retrieve?\n id, name, state, time_zone, lat, lon,local_date_time, local_date_time_full, air_temp, apparent_t, cloud, dewpt, press, rel_hum, wind_dir, wind_spd_kmh, wind_spd_kt");
             String field = scanner.nextLine();
 
-            // Send request to Aggregation Server
-            String result = aggregator.getContentField(field);
+            // Request data from the server
+            String data = server.getData(field);
+            System.out.println("Data for '" + field + "': " + data);
 
-            // Print the result
-            System.out.println("Requested Field: " + field);
-            System.out.println("Result: " + result);
-            
             scanner.close();
         } catch (Exception e) {
             System.err.println("Client exception: " + e.toString());
