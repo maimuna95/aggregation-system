@@ -1,33 +1,29 @@
-import java.rmi.Naming;
-import java.rmi.RemoteException;
-import java.util.List;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.util.Scanner;
 
 public class Client {
     public static void main(String[] args) {
         try {
-            AggregatorInterface server = (AggregatorInterface) Naming.lookup("rmi://localhost/AggregationServer");
+            // Connect to the Aggregation Server
+            Registry registry = LocateRegistry.getRegistry("localhost", 2000);
+            AggregatorInterface aggregator = (AggregatorInterface) registry.lookup("AggregatorService");
 
-            // Retry mechanism for GET request
-            boolean success = false;
-            int retries = 3; // Number of retry attempts
+            // Ask user for the field they want to retrieve
+            Scanner scanner = new Scanner(System.in);
+            System.out.println("Enter the field you want to retrieve (e.g., local_date_time_full, air_temp, wind_spd_kmh): ");
+            String field = scanner.nextLine();
 
-            while (retries > 0 && !success) {
-                try {
-                    List<String> feed = server.getFeed();
-                    System.out.println("Feed: " + feed);
-                    success = true; // Set success to true if request is successful
-                } catch (RemoteException e) {
-                    System.out.println("Failed to GET feed, retrying... Retries left: " + retries);
-                    retries--;
-                    if (retries > 0) {
-                        Thread.sleep(2000); // Wait 2 seconds before retrying
-                    } else {
-                        System.out.println("Failed to GET feed after multiple attempts.");
-                    }
-                }
-            }
+            // Send request to Aggregation Server
+            String result = aggregator.getContentField(field);
 
+            // Print the result
+            System.out.println("Requested Field: " + field);
+            System.out.println("Result: " + result);
+            
+            scanner.close();
         } catch (Exception e) {
+            System.err.println("Client exception: " + e.toString());
             e.printStackTrace();
         }
     }
