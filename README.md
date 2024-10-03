@@ -1,31 +1,19 @@
-# aggregation-system
-Building an aggregation server with consistency management and a RESTful API.
+Overview:
 
-Overview: 
+This project is an aggregation system using JAVA RMI, which allows multiple clients to retrieve data from one or more content servers while managing failures and ensuring data consistency. The system includes a RESTful API for communication and supports Lamport clocks for synchronization. 
 
-This is a Calculator Application System using Java RMI. This application consists of a server and multiple clients. Each client will have a stack to push value in it, pop the value from the stack, show the stack value, check if the stack is empty, can do operations such as find the min and max from the stack, and calculate GCD and LCM of the stack values.
+Checklist:
+1. Both of the servers are running
+2. Client is communicating with the servers
+3. Using JSON GET & PUT methods
+4. Handling errors
 
-I tried for the bonus points: Each client will have individual stack by maintaining "hashmap' so that client's stack can store values separately by Client ID (client ID is string).
+FYI: Couldn't manage to write fully functionable Junit Testcases, that's why didn't add it.
 
-Files: As mentioned in the assignment description, I used the following file names:
+Run and Test the code:
+1. Open a terminal, command "rmiregistry"
+2. Open another terminal, command "java ContentServer" to run the content server
+3. Open another terminal, command "java AggregationServer" to run the aggregation server
+4. Open another terminal, command "java Client" to run the client file. Following that, it will ask you what data you want to retrieve. Right after you enter your desired data request, you will be able to see the retrieved data from the content server. 
+5. You can run multiple server at the same time
 
-Calculator.java: Interface defining the remote methods available to clients.
-CalculatorImplementation.java: Implements the Calculator interface and contains the logic for stack operations.
-CalculatorServer.java: Hosts the RMI server and binds the Calculator implementation to the RMI registry.
-CalculatorClient.java: Client application that interacts with the server to perform stack operations.
-Run the code:
-
-Open a terminal to compile java files and run server
-Compile the java files: javac CalculatorServer.java CalculatorClient.java
-Run the server: java CalculatorServer
-Open another terminal to run the client file
-Run the client: java Calculator.Client After running the client file:
-It will ask to put a client ID, as example you can write "1" or "Your Name" because it will take input as string value. This way you can open another terminal as another client and you can create another client ID
-Following that you will get these options
-Push Value : Push value into the stack --
-Push Operation : Mention the operation you want to do with the stack values
-Pop Value : Pop the value from the stack
-Check if Stack is Empty : It will show the stack is empty or not
-Delay Pop : It will pop the value after the mentioned delay
-Show Stack : By this option, you will be able to view the value of the stack
-Exit : By this option, client will exit from the server
